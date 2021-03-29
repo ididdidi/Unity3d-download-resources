@@ -126,8 +126,7 @@ namespace mofrison.Network
                 {
                     return null;
                 }
-               // await new WaitForUpdate();
-                await new WaitForEndOfFrame();
+                await Task.Yield();
             }
 
 #pragma warning disable CS4014
@@ -146,8 +145,7 @@ namespace mofrison.Network
                 else
                 {
                     progress?.Invoke(request.downloadProgress);
-                    //await new WaitForUpdate();
-                    await new WaitForEndOfFrame();
+                    await Task.Yield();
                 }
             }
 

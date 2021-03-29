@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Video;
@@ -31,8 +32,7 @@ namespace mofrison.Network {
             var prefab = await DownloadFromBundle<GameObject>(prefabURL, canvasName);
             var videoPlayer = Instantiate(prefab).GetComponent<VideoPlayer>();
             videoPlayer.url = DownloadVideo(movieUrl);
-            if (videoPlayer.gameObject.activeInHierarchy) { videoPlayer.Play(); }
-            else { Debug.LogWarning("videoPlayer.is not ActiveAndEnabled"); }
+            videoPlayer.Play();
         }
 
         private async Task<T> DownloadFromBundle<T>(string url, string name) where T : Object
