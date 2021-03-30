@@ -8,34 +8,29 @@ namespace mofrison.Network
 {
     public static class Network
     {
-        public static async Task<AssetBundle> RequestBundle(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null)
+        public static async Task<AssetBundle> RequestBundle(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
             UnityWebRequest request;
-            CachedAssetBundle cachedAssetBundle = await GetCachedAssetBundle(new System.Uri(url));
-            if (!Caching.IsVersionCached(cachedAssetBundle))
+            CachedAssetBundle cachedAssetBundle = default;
+            if (!caching || !ResourceCache.CheckFreeSpace(await RequestSize(url)))
             {
-                float fileSize = await RequestSize(url);
-                if (!ResourceCache.CheckFreeSpace(fileSize))
-                {
-                    Debug.LogWarning("[Netowrk] error: Not available space to download " + fileSize / ResourceCache.MIB + "Mb");
-                    request = UnityWebRequestAssetBundle.GetAssetBundle(url);
-                }
-                else
-                {
-                    request = UnityWebRequestAssetBundle.GetAssetBundle(url, cachedAssetBundle, 0);
-                }
+                request = UnityWebRequestAssetBundle.GetAssetBundle(url);
             }
             else {
+                cachedAssetBundle = await GetCachedAssetBundle(new System.Uri(url));
+                if (Caching.IsVersionCached(cachedAssetBundle)) { progress = null; }
                 request = UnityWebRequestAssetBundle.GetAssetBundle(url, cachedAssetBundle, 0);
-                progress = null; 
             }
 
             UnityWebRequest uwr = await WebRequest(request, cancelationToken, progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
             {
                 AssetBundle assetBundle = DownloadHandlerAssetBundle.GetContent(uwr);
-                // Deleting old versions from the cache
-                Caching.ClearOtherCachedVersions(assetBundle.name, cachedAssetBundle.hash);
+                if (!string.IsNullOrEmpty(cachedAssetBundle.name)) 
+                {
+                    // Deleting old versions from the cache
+                    Caching.ClearOtherCachedVersions(assetBundle.name, cachedAssetBundle.hash);
+                }
                 return assetBundle;
             }
             else
@@ -44,11 +39,12 @@ namespace mofrison.Network
             }
         }
 
-        public static async Task<Texture2D> RequestTexture(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null)
+        public static async Task<Texture2D> RequestTexture(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
             UnityWebRequest request;
+
             string path = url.GetCachedPath();
-            if (path != null) { request = UnityWebRequestTexture.GetTexture("file://" + path); progress = null; }
+            if (caching && path != null) { request = UnityWebRequestTexture.GetTexture("file://" + path); progress = null; }
             else { request = UnityWebRequestTexture.GetTexture(url); }
 
             UnityWebRequest uwr = await WebRequest(request, cancelationToken, progress);
@@ -56,8 +52,7 @@ namespace mofrison.Network
             {
                 Texture2D texture = DownloadHandlerTexture.GetContent(uwr);
                 texture.name = Path.GetFileName(uwr.url);
-
-                ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
+                if (caching) { ResourceCache.Caching(uwr.url, uwr.downloadHandler.data); }
                 return texture;
             }
             else
@@ -66,11 +61,11 @@ namespace mofrison.Network
             }
         }
 
-        public static async Task<AudioClip> RequestAudioClip(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, AudioType audioType = AudioType.OGGVORBIS)
+        public static async Task<AudioClip> RequestAudioClip(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true, AudioType audioType = AudioType.OGGVORBIS)
         {
             UnityWebRequest request;
             string path = url.GetCachedPath();
-            if (path != null) { request = UnityWebRequestMultimedia.GetAudioClip("file://" + path, audioType); progress = null; }
+            if (caching && path != null) { request = UnityWebRequestMultimedia.GetAudioClip("file://" + path, audioType); progress = null; }
             else { request = UnityWebRequestMultimedia.GetAudioClip(url, audioType); }
 
             UnityWebRequest uwr = await WebRequest(request, cancelationToken, progress);
@@ -79,7 +74,7 @@ namespace mofrison.Network
                 AudioClip audioClip = DownloadHandlerAudioClip.GetContent(uwr);
                 audioClip.name = Path.GetFileName(uwr.url);
 
-                ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
+                if (caching) { ResourceCache.Caching(uwr.url, uwr.downloadHandler.data); }
                 return audioClip;
             }
             else
@@ -88,15 +83,15 @@ namespace mofrison.Network
             }
         }
 
-        public static string RequestVideoStream(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null)
+        public static string RequestVideoStream(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
-            string path = url.GetCachedPath();
-            if (path != null) {  return path; }
-            else
-            {
+            if (caching) {
+                string path = url.GetCachedPath();
+                if (!string.IsNullOrEmpty(path)) { return path; }
+
                 CachingVideo(url, cancelationToken, progress);
-                return url;
             }
+            return url;
         }
 
         public static async void CachingVideo(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null)
