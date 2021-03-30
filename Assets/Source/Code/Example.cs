@@ -1,5 +1,6 @@
-﻿using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.IO;
+using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Video;
@@ -17,6 +18,7 @@ namespace mofrison.Network {
         [SerializeField] private string movieUrl = "http://app.iqpax.com/oculus/go/Yurkov.mp4";
 
         private List<AssetBundle> loadedBundles = new List<AssetBundle>();
+        CancellationTokenSource cancelationToken = new CancellationTokenSource();
 
         private void Awake()
         {
@@ -37,26 +39,28 @@ namespace mofrison.Network {
 
         private async Task<T> DownloadFromBundle<T>(string url, string name) where T : Object
         {
-            var bundle = await Network.RequestBundle(url, new System.Threading.CancellationTokenSource());
+            var bundle = await Network.RequestBundle(url, cancelationToken, (prg)=> { print(Path.GetFileName(url) + " " + prg); });
             loadedBundles.Add(bundle);
             return bundle.LoadAsset<T>(name);
         }
 
         private async Task<Texture> DownloadTexture(string url)
         {
-            var texture = await Network.RequestTexture(url, new System.Threading.CancellationTokenSource());
+            var texture = await Network.RequestTexture(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
             texture.wrapMode = TextureWrapMode.Clamp;
             return texture;
         }
 
         private string DownloadVideo(string url)
         {
-            return Network.RequestVideoStream(url, new System.Threading.CancellationTokenSource());
+            return Network.RequestVideoStream(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
         }
 
         private void OnDestroy()
         {
-            foreach(var bundle in loadedBundles)
+            cancelationToken.Cancel();
+            cancelationToken.Dispose();
+            foreach (var bundle in loadedBundles)
             {
                 bundle.Unload(true);
             }

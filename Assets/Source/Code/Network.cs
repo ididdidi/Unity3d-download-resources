@@ -10,23 +10,18 @@ namespace mofrison.Network
     {
         public static async Task<AssetBundle> RequestBundle(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
-            UnityWebRequest request;
-            CachedAssetBundle cachedAssetBundle = default;
-            if (!caching || !ResourceCache.CheckFreeSpace(await RequestSize(url)))
+            UnityWebRequest request = UnityWebRequestAssetBundle.GetAssetBundle(url); ;
+            CachedAssetBundle cachedAssetBundle = await GetCachedAssetBundle(new System.Uri(url));
+            if (Caching.IsVersionCached(cachedAssetBundle) || (caching && ResourceCache.CheckFreeSpace(await RequestSize(url))))
             {
-                request = UnityWebRequestAssetBundle.GetAssetBundle(url);
-            }
-            else {
-                cachedAssetBundle = await GetCachedAssetBundle(new System.Uri(url));
-                if (Caching.IsVersionCached(cachedAssetBundle)) { progress = null; }
                 request = UnityWebRequestAssetBundle.GetAssetBundle(url, cachedAssetBundle, 0);
             }
 
-            UnityWebRequest uwr = await WebRequest(request, cancelationToken, progress);
+            UnityWebRequest uwr = await WebRequest(request, cancelationToken, Caching.IsVersionCached(cachedAssetBundle)? null : progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
             {
                 AssetBundle assetBundle = DownloadHandlerAssetBundle.GetContent(uwr);
-                if (!string.IsNullOrEmpty(cachedAssetBundle.name)) 
+                if (caching) 
                 {
                     // Deleting old versions from the cache
                     Caching.ClearOtherCachedVersions(assetBundle.name, cachedAssetBundle.hash);
@@ -44,8 +39,8 @@ namespace mofrison.Network
             UnityWebRequest request;
 
             string path = url.GetCachedPath();
-            if (caching && path != null) { request = UnityWebRequestTexture.GetTexture("file://" + path); progress = null; }
-            else { request = UnityWebRequestTexture.GetTexture(url); }
+            if (string.IsNullOrEmpty(path)) { request = UnityWebRequestTexture.GetTexture(url); }
+            else { request = UnityWebRequestTexture.GetTexture("file://" + path); progress = null; }
 
             UnityWebRequest uwr = await WebRequest(request, cancelationToken, progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
@@ -65,8 +60,8 @@ namespace mofrison.Network
         {
             UnityWebRequest request;
             string path = url.GetCachedPath();
-            if (caching && path != null) { request = UnityWebRequestMultimedia.GetAudioClip("file://" + path, audioType); progress = null; }
-            else { request = UnityWebRequestMultimedia.GetAudioClip(url, audioType); }
+            if (string.IsNullOrEmpty(path)) { request = UnityWebRequestMultimedia.GetAudioClip(url, audioType); }
+            else { request = UnityWebRequestMultimedia.GetAudioClip("file://" + path, audioType); progress = null; }
 
             UnityWebRequest uwr = await WebRequest(request, cancelationToken, progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
@@ -83,29 +78,32 @@ namespace mofrison.Network
             }
         }
 
+
+        private delegate void AsyncOperation();
+
         public static string RequestVideoStream(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
-            if (caching) {
-                string path = url.GetCachedPath();
-                if (!string.IsNullOrEmpty(path)) { return path; }
-
-                CachingVideo(url, cancelationToken, progress);
+            string path = url.GetCachedPath();
+            if (string.IsNullOrEmpty(path))
+            {
+                if (caching)
+                {
+                    AsyncOperation cachingVideo = async delegate {
+                        ResourceCache.Caching(url, await RequestData(url, cancelationToken, progress));
+                    };
+                    cachingVideo();
+                }
+                return url;
             }
-            return url;
-        }
-
-        public static async void CachingVideo(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null)
-        {
-            ResourceCache.Caching(url, await RequestData(url, cancelationToken, progress));
+            else { return path; }
         }
 
         public static async Task<byte[]> RequestData(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null)
         {
-            UnityWebRequest request = UnityWebRequest.Get(url);
-            UnityWebRequest uwr = await WebRequest(request, cancelationToken, progress);
+            UnityWebRequest uwr = await WebRequest(UnityWebRequest.Get(url), cancelationToken, progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
             {
-                return (uwr.downloadHandler.data);
+                return uwr.downloadHandler.data;
             }
             else
             {
