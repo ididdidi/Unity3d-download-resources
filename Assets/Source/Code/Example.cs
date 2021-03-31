@@ -39,21 +39,21 @@ namespace mofrison.Network {
 
         private async Task<T> DownloadFromBundle<T>(string url, string name) where T : Object
         {
-            var bundle = await Network.RequestBundle(url, cancelationToken, (prg)=> { print(Path.GetFileName(url) + " " + prg); });
+            var bundle = await Network.GetBundle(url, cancelationToken, (prg)=> { print(Path.GetFileName(url) + " " + prg); });
             loadedBundles.Add(bundle);
             return bundle.LoadAsset<T>(name);
         }
 
         private async Task<Texture> DownloadTexture(string url)
         {
-            var texture = await Network.RequestTexture(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
+            var texture = await Network.GetTexture(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
             texture.wrapMode = TextureWrapMode.Clamp;
             return texture;
         }
 
         private string DownloadVideo(string url)
         {
-            return Network.RequestVideoStream(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
+            return Network.GetVideoStream(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
         }
 
         private void OnDestroy()
