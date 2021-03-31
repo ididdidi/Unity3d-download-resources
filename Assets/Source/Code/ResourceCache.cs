@@ -38,13 +38,6 @@ namespace mofrison.Network
             else { throw new Exception("[Caching] error: Not available space to download " + data.Length / MIB + "Mb"); }
         }
 
-        public static string GetCachedPath(this string url)
-        {
-            string path = url.ConvertToLocalPath();
-            if (File.Exists(path)) return path;
-            else return null;
-        }
-
         public static string ConvertToLocalPath(this string url)
         {
             try

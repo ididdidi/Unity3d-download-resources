@@ -25,7 +25,7 @@ namespace mofrison.Network
         {
             UnityWebRequest request;
 
-            string path = url.GetCachedPath();
+            string path = await url.GetCachedPath();
             if (string.IsNullOrEmpty(path)) { request = UnityWebRequestTexture.GetTexture(url); }
             else { request = UnityWebRequestTexture.GetTexture("file://" + path); progress = null; }
 
@@ -49,7 +49,7 @@ namespace mofrison.Network
         public static async Task<AudioClip> GetAudioClip(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true, AudioType audioType = AudioType.OGGVORBIS)
         {
             UnityWebRequest request;
-            string path = url.GetCachedPath();
+            string path = await url.GetCachedPath();
             if (string.IsNullOrEmpty(path)) { request = UnityWebRequestMultimedia.GetAudioClip(url, audioType); }
             else { request = UnityWebRequestMultimedia.GetAudioClip("file://" + path, audioType); progress = null; }
 
@@ -73,15 +73,14 @@ namespace mofrison.Network
 
         private delegate void AsyncOperation();
 
-        public static string GetVideoStream(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
+        public static async Task<string> GetVideoStream(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
-            string path = url.GetCachedPath();
+            string path = await url.GetCachedPath();
             if (string.IsNullOrEmpty(path))
             {
                 AsyncOperation cachingVideo = async delegate {
                     if (caching && ResourceCache.CheckFreeSpace(await GetSize(url)))
                     {
-                    
                         ResourceCache.Caching(url, await GetData(url, cancelationToken, progress));
                     }
                 };
@@ -147,16 +146,15 @@ namespace mofrison.Network
                     await Task.Yield();
                 }
             }
-
             progress?.Invoke(1f);
             return request;
         }
 
-        private static async Task<int> GetSize(string url)
+        private static async Task<long> GetSize(string url)
         {
             UnityWebRequest request = await SendWebRequest(UnityWebRequest.Head(url));
             var contentLength = request.GetResponseHeader("Content-Length");
-            if (int.TryParse(contentLength, out int returnValue))
+            if (long.TryParse(contentLength, out long returnValue))
             {
                 return returnValue;
             }
@@ -221,6 +219,24 @@ namespace mofrison.Network
                     throw new Exception("[Netowrk] error: Nothing was found in the cache for " + uri);
                 }
             }
+        }
+
+
+        public static async Task<string> GetCachedPath(this string url)
+        {
+            string path = url.ConvertToLocalPath();
+            if (File.Exists(path)) {
+                try
+                {
+                    if (new FileInfo(path).Length != await GetSize(url)) { return null; }
+                }
+                catch
+                { 
+                    return path; 
+                }
+                return path;
+            }
+            else return null;
         }
 
         public class Exception : System.Exception

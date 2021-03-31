@@ -33,7 +33,7 @@ namespace mofrison.Network {
 
             var prefab = await DownloadFromBundle<GameObject>(prefabURL, canvasName);
             var videoPlayer = Instantiate(prefab).GetComponent<VideoPlayer>();
-            videoPlayer.url = DownloadVideo(movieUrl);
+            videoPlayer.url = await DownloadVideo(movieUrl);
             videoPlayer.Play();
         }
 
@@ -51,9 +51,9 @@ namespace mofrison.Network {
             return texture;
         }
 
-        private string DownloadVideo(string url)
+        private async Task<string> DownloadVideo(string url)
         {
-            return Network.GetVideoStream(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
+            return await Network.GetVideoStream(url, cancelationToken, (prg) => { print(Path.GetFileName(url) + " " + prg); });
         }
 
         private void OnDestroy()
