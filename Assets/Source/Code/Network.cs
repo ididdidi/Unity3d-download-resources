@@ -34,7 +34,7 @@ namespace mofrison.Network
             {
                 Texture2D texture = DownloadHandlerTexture.GetContent(uwr);
                 texture.name = Path.GetFileName(uwr.url);
-                if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url))) 
+                if (caching && string.IsNullOrEmpty(path)) 
                 {
                     ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
                 }
@@ -58,10 +58,9 @@ namespace mofrison.Network
             {
                 AudioClip audioClip = DownloadHandlerAudioClip.GetContent(uwr);
                 audioClip.name = Path.GetFileName(uwr.url);
-
-                if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url))) 
-                { 
-                    ResourceCache.Caching(uwr.url, uwr.downloadHandler.data); 
+                if (caching && string.IsNullOrEmpty(path))
+                {
+                    ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
                 }
                 return audioClip;
             }
@@ -79,9 +78,16 @@ namespace mofrison.Network
             if (string.IsNullOrEmpty(path))
             {
                 AsyncOperation cachingVideo = async delegate {
-                    if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url)))
+                    try
                     {
-                        ResourceCache.Caching(url, await GetData(url, cancelationToken, progress));
+                        if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url)))
+                        {
+                            ResourceCache.Caching(url, await GetData(url, cancelationToken, progress));
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        Debug.LogWarning("[Netowrk] error: " + e.Message);
                     }
                 };
                 cachingVideo();
@@ -230,9 +236,9 @@ namespace mofrison.Network
                 {
                     if (new FileInfo(path).Length != await GetSize(url)) { return null; }
                 }
-                catch
-                { 
-                    return path; 
+                catch (Exception e)
+                {
+                    Debug.LogWarning("[Netowrk] error: " + e.Message); 
                 }
                 return path;
             }
