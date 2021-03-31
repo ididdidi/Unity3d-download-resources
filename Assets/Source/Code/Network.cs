@@ -34,7 +34,7 @@ namespace mofrison.Network
             {
                 Texture2D texture = DownloadHandlerTexture.GetContent(uwr);
                 texture.name = Path.GetFileName(uwr.url);
-                if (caching && ResourceCache.CheckFreeSpace(await GetSize(url))) 
+                if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url))) 
                 {
                     ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
                 }
@@ -59,7 +59,7 @@ namespace mofrison.Network
                 AudioClip audioClip = DownloadHandlerAudioClip.GetContent(uwr);
                 audioClip.name = Path.GetFileName(uwr.url);
 
-                if (caching && ResourceCache.CheckFreeSpace(await GetSize(url))) 
+                if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url))) 
                 { 
                     ResourceCache.Caching(uwr.url, uwr.downloadHandler.data); 
                 }
@@ -79,7 +79,7 @@ namespace mofrison.Network
             if (string.IsNullOrEmpty(path))
             {
                 AsyncOperation cachingVideo = async delegate {
-                    if (caching && ResourceCache.CheckFreeSpace(await GetSize(url)))
+                    if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url)))
                     {
                         ResourceCache.Caching(url, await GetData(url, cancelationToken, progress));
                     }
