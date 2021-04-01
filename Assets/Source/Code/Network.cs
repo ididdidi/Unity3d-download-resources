@@ -164,6 +164,14 @@ namespace mofrison.Network
             }
         }
 
+        private static Hash128 GetHashFromManifest(string manifest)
+        {
+            var hashRow = manifest.Split("\n".ToCharArray())[5];
+            var hash = Hash128.Parse(hashRow.Split(':')[1].Trim());
+            if (hash.isValid && hash != default) { return hash; }
+            else { throw new Exception("[Netowrk] error: couldn't extract hash from manifest."); }
+        }
+
         private static async Task<UnityWebRequest> SendWebRequest(UnityWebRequest request, CancellationTokenSource cancelationToken = null, System.Action<float> progress = null)
         {
             while (!Caching.ready)
@@ -223,14 +231,6 @@ namespace mofrison.Network
             {
                 throw new Exception("[Netowrk] error: " + uwr.error + " " + uwr.url);
             }
-        }
-
-        private static Hash128 GetHashFromManifest(string manifest)
-        {
-            var hashRow = manifest.Split("\n".ToCharArray())[5];
-            var hash = Hash128.Parse(hashRow.Split(':')[1].Trim());
-            if (hash.isValid && hash != default) { return hash; }
-            else { throw new Exception("[Netowrk] error: couldn't extract hash from manifest."); }
         }
 
         public static async Task<string> GetCachedPath(this string url)
