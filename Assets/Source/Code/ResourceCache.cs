@@ -25,7 +25,7 @@ namespace mofrison.Network
 
             if (CheckFreeSpace(data.Length))
             {
-                string path = url.ConvertToLocalPath();
+                string path = url.ConvertToCachedPath();
 
                 DirectoryInfo dirInfo = new DirectoryInfo(Application.persistentDataPath);
                 if (!dirInfo.Exists)
@@ -38,7 +38,7 @@ namespace mofrison.Network
             else { throw new Exception("[Caching] error: Not available space to download " + data.Length / MIB + "Mb"); }
         }
 
-        public static string ConvertToLocalPath(this string url)
+        public static string ConvertToCachedPath(this string url)
         {
             try
             {

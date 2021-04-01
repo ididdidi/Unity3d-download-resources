@@ -98,7 +98,7 @@ namespace mofrison.Network
         public static async Task<AssetBundle> GetAssetBundle(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
             UnityWebRequest request;
-            CachedAssetBundle assetBundleVersion = await GetAssetBundleVersion(new System.Uri(url));
+            CachedAssetBundle assetBundleVersion = await GetAssetBundleVersion(url);
             if (Caching.IsVersionCached(assetBundleVersion) || (caching && ResourceCache.CheckFreeSpace(await GetSize(url))))
             {
                 request = UnityWebRequestAssetBundle.GetAssetBundle(url, assetBundleVersion, 0);
@@ -125,19 +125,20 @@ namespace mofrison.Network
             }
         }
 
-        private static async Task<CachedAssetBundle> GetAssetBundleVersion(System.Uri uri)
+        private static async Task<CachedAssetBundle> GetAssetBundleVersion(string url)
         {
             Hash128 hash = default;
-            string manifest = await GetText(uri + ".manifest");
+            string manifest = await GetText(url + ".manifest");
+            string localPath = new System.Uri(url).LocalPath;
 
             if (!string.IsNullOrEmpty(manifest))
             {
                 hash = GetHashFromManifest(manifest);
-                return new CachedAssetBundle(uri.LocalPath, hash);
+                return new CachedAssetBundle(localPath, hash);
             }
             else
             {
-                DirectoryInfo dir = new DirectoryInfo(uri.ToString().ConvertToLocalPath());
+                DirectoryInfo dir = new DirectoryInfo(url.ConvertToCachedPath());
                 if (dir.Exists)
                 {
                     System.DateTime lastWriteTime = default;
@@ -151,11 +152,11 @@ namespace mofrison.Network
                         }
                         else { Directory.Delete(Path.Combine(dir.FullName, item.Name), true); }
                     }
-                    return new CachedAssetBundle(uri.LocalPath, hash);
+                    return new CachedAssetBundle(localPath, hash);
                 }
                 else
                 {
-                    throw new Exception("[Netowrk] error: Nothing was found in the cache for " + uri);
+                    throw new Exception("[Netowrk] error: Nothing was found in the cache for " + url);
                 }
             }
         }
@@ -231,7 +232,7 @@ namespace mofrison.Network
 
         public static async Task<string> GetCachedPath(this string url)
         {
-            string path = url.ConvertToLocalPath();
+            string path = url.ConvertToCachedPath();
             if (File.Exists(path)) {
                 try
                 {
