@@ -108,15 +108,15 @@ namespace mofrison.Network
         public static async Task<AudioClip> GetAudioClip(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true, AudioType audioType = AudioType.OGGVORBIS)
         {
             string path = await url.GetCachedPath();
+            bool isCached = path.Contains("file://");
             UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(path, audioType);
-            if (path.Contains("file://")) { progress = null; }
         
-            UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, progress);
+            UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, isCached ? null : progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
             {
                 AudioClip audioClip = DownloadHandlerAudioClip.GetContent(uwr);
                 audioClip.name = Path.GetFileName(uwr.url);
-                if (caching && !path.Contains("file://"))
+                if (caching && !isCached)
                 {
                     ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
                 }
