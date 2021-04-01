@@ -84,17 +84,16 @@ namespace mofrison.Network
 
         public static async Task<Texture2D> GetTexture(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
-            UnityWebRequest request;
             string path = await url.GetCachedPath();
-            if (string.IsNullOrEmpty(path)) { request = UnityWebRequestTexture.GetTexture(url); }
-            else { request = UnityWebRequestTexture.GetTexture("file://" + path); progress = null; }
+            bool isCached = path.Contains("file://");
+            UnityWebRequest request = UnityWebRequestTexture.GetTexture(path);
 
-            UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, progress);
+            UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, isCached? null : progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
             {
                 Texture2D texture = DownloadHandlerTexture.GetContent(uwr);
                 texture.name = Path.GetFileName(uwr.url);
-                if (caching && string.IsNullOrEmpty(path)) 
+                if (caching && !isCached) 
                 {
                     ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
                 }
@@ -108,17 +107,16 @@ namespace mofrison.Network
 
         public static async Task<AudioClip> GetAudioClip(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true, AudioType audioType = AudioType.OGGVORBIS)
         {
-            UnityWebRequest request;
             string path = await url.GetCachedPath();
-            if (string.IsNullOrEmpty(path)) { request = UnityWebRequestMultimedia.GetAudioClip(url, audioType); }
-            else { request = UnityWebRequestMultimedia.GetAudioClip("file://" + path, audioType); progress = null; }
-
+            UnityWebRequest request = UnityWebRequestMultimedia.GetAudioClip(path, audioType);
+            if (path.Contains("file://")) { progress = null; }
+        
             UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
             {
                 AudioClip audioClip = DownloadHandlerAudioClip.GetContent(uwr);
                 audioClip.name = Path.GetFileName(uwr.url);
-                if (caching && string.IsNullOrEmpty(path))
+                if (caching && !path.Contains("file://"))
                 {
                     ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
                 }
@@ -135,12 +133,12 @@ namespace mofrison.Network
         public static async Task<string> GetVideoStream(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
             string path = await url.GetCachedPath();
-            if (string.IsNullOrEmpty(path))
+            if (!path.Contains("file://"))
             {
                 AsyncOperation cachingVideo = async delegate {
                     try
                     {
-                        if (caching && string.IsNullOrEmpty(path) && ResourceCache.CheckFreeSpace(await GetSize(url)))
+                        if (caching && ResourceCache.CheckFreeSpace(await GetSize(url)))
                         {
                             ResourceCache.Caching(url, await GetData(url, cancelationToken, progress));
                         }
@@ -233,21 +231,21 @@ namespace mofrison.Network
             else { throw new Exception("[Netowrk] error: couldn't extract hash from manifest."); }
         }
 
-        public static async Task<string> GetCachedPath(this string url)
+        private static async Task<string> GetCachedPath(this string url)
         {
             string path = url.ConvertToCachedPath();
             if (File.Exists(path)) {
                 try
                 {
-                    if (new FileInfo(path).Length != await GetSize(url)) { return null; }
+                    if (new FileInfo(path).Length != await GetSize(url)) { return url; }
                 }
                 catch (Exception e)
                 {
                     Debug.LogWarning("[Netowrk] error: " + e.Message); 
                 }
-                return path;
+                return "file://" + path;
             }
-            else return null;
+            else return url;
         }
 
         public class Exception : System.Exception
