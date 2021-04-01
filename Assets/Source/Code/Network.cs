@@ -193,7 +193,7 @@ namespace mofrison.Network
             try
             {
                 string manifest = await GetText(url + ".manifest");
-                hash = GetHashFromManifest(manifest);
+                hash = manifest.GetHash128();
                 return new CachedAssetBundle(localPath, hash);
             }
             catch (Exception e)
@@ -225,9 +225,9 @@ namespace mofrison.Network
             }
         }
 
-        private static Hash128 GetHashFromManifest(string manifest)
+        private static Hash128 GetHash128(this string str)
         {
-            var hashRow = manifest.Split("\n".ToCharArray())[5];
+            var hashRow = str.Split("\n".ToCharArray())[5];
             var hash = Hash128.Parse(hashRow.Split(':')[1].Trim());
             if (hash.isValid && hash != default) { return hash; }
             else { throw new Exception("[Netowrk] error: couldn't extract hash from manifest."); }
