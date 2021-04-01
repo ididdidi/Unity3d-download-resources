@@ -24,7 +24,6 @@ namespace mofrison.Network
         public static async Task<Texture2D> GetTexture(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
             UnityWebRequest request;
-
             string path = await url.GetCachedPath();
             if (string.IsNullOrEmpty(path)) { request = UnityWebRequestTexture.GetTexture(url); }
             else { request = UnityWebRequestTexture.GetTexture("file://" + path); progress = null; }
@@ -96,13 +95,17 @@ namespace mofrison.Network
             else { return path; }
         }
 
-        public static async Task<AssetBundle> GetBundle(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
+        public static async Task<AssetBundle> GetAssetBundle(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
-            UnityWebRequest request = UnityWebRequestAssetBundle.GetAssetBundle(url); ;
+            UnityWebRequest request;
             CachedAssetBundle cachedAssetBundle = await GetCachedAssetBundle(new System.Uri(url));
             if (Caching.IsVersionCached(cachedAssetBundle) || (caching && ResourceCache.CheckFreeSpace(await GetSize(url))))
             {
                 request = UnityWebRequestAssetBundle.GetAssetBundle(url, cachedAssetBundle, 0);
+            }
+            else 
+            {
+                request = UnityWebRequestAssetBundle.GetAssetBundle(url);
             }
 
             UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, Caching.IsVersionCached(cachedAssetBundle)? null : progress);
@@ -188,7 +191,6 @@ namespace mofrison.Network
         {
             var hashRow = manifest.Split("\n".ToCharArray())[5];
             var hash = Hash128.Parse(hashRow.Split(':')[1].Trim());
-
             return hash;
         }
 
