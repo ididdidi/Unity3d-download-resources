@@ -8,6 +8,67 @@ namespace mofrison.Network
 {
     public static class Network
     {
+        private static async Task<UnityWebRequest> SendWebRequest(UnityWebRequest request, CancellationTokenSource cancelationToken = null, System.Action<float> progress = null)
+        {
+            while (!Caching.ready)
+            {
+                if (cancelationToken != null && cancelationToken.IsCancellationRequested)
+                {
+                    return null;
+                }
+                await Task.Yield();
+            }
+
+#pragma warning disable CS4014
+            request.SendWebRequest();
+#pragma warning restore CS4014
+
+            while (!request.isDone)
+            {
+                if (cancelationToken != null && cancelationToken.IsCancellationRequested)
+                {
+                    request.Abort();
+                    request.Dispose();
+
+                    return null;
+                }
+                else
+                {
+                    progress?.Invoke(request.downloadProgress);
+                    await Task.Yield();
+                }
+            }
+            progress?.Invoke(1f);
+            return request;
+        }
+
+        public static async Task<long> GetSize(string url)
+        {
+            UnityWebRequest request = await SendWebRequest(UnityWebRequest.Head(url));
+            var contentLength = request.GetResponseHeader("Content-Length");
+            if (long.TryParse(contentLength, out long returnValue))
+            {
+                return returnValue;
+            }
+            else
+            {
+                throw new Exception("[Netowrk] error: " + request.error + " " + url);
+            }
+        }
+
+        public static async Task<string> GetText(string url)
+        {
+            var uwr = await SendWebRequest(UnityWebRequest.Get(url));
+            if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
+            {
+                return uwr.downloadHandler.text;
+            }
+            else
+            {
+                throw new Exception("[Netowrk] error: " + uwr.error + " " + uwr.url);
+            }
+        }
+
         public static async Task<byte[]> GetData(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null)
         {
             UnityWebRequest uwr = await SendWebRequest(UnityWebRequest.Get(url), cancelationToken, progress);
@@ -170,67 +231,6 @@ namespace mofrison.Network
             var hash = Hash128.Parse(hashRow.Split(':')[1].Trim());
             if (hash.isValid && hash != default) { return hash; }
             else { throw new Exception("[Netowrk] error: couldn't extract hash from manifest."); }
-        }
-
-        private static async Task<UnityWebRequest> SendWebRequest(UnityWebRequest request, CancellationTokenSource cancelationToken = null, System.Action<float> progress = null)
-        {
-            while (!Caching.ready)
-            {
-                if (cancelationToken != null && cancelationToken.IsCancellationRequested)
-                {
-                    return null;
-                }
-                await Task.Yield();
-            }
-
-#pragma warning disable CS4014
-            request.SendWebRequest();
-#pragma warning restore CS4014
-
-            while (!request.isDone)
-            {
-                if (cancelationToken != null && cancelationToken.IsCancellationRequested)
-                {
-                    request.Abort();
-                    request.Dispose();
-
-                    return null;
-                }
-                else
-                {
-                    progress?.Invoke(request.downloadProgress);
-                    await Task.Yield();
-                }
-            }
-            progress?.Invoke(1f);
-            return request;
-        }
-
-        private static async Task<long> GetSize(string url)
-        {
-            UnityWebRequest request = await SendWebRequest(UnityWebRequest.Head(url));
-            var contentLength = request.GetResponseHeader("Content-Length");
-            if (long.TryParse(contentLength, out long returnValue))
-            {
-                return returnValue;
-            }
-            else
-            {
-                throw new Exception("[Netowrk] error: " + request.error + " " + url);
-            }
-        }
-
-        private static async Task<string> GetText(string url)
-        {
-            var uwr = await SendWebRequest(UnityWebRequest.Get(url));
-            if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
-            {
-                return uwr.downloadHandler.text;
-            }
-            else
-            {
-                throw new Exception("[Netowrk] error: " + uwr.error + " " + uwr.url);
-            }
         }
 
         public static async Task<string> GetCachedPath(this string url)
