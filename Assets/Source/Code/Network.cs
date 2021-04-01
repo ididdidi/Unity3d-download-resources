@@ -98,30 +98,65 @@ namespace mofrison.Network
         public static async Task<AssetBundle> GetAssetBundle(string url, CancellationTokenSource cancelationToken, System.Action<float> progress = null, bool caching = true)
         {
             UnityWebRequest request;
-            CachedAssetBundle cachedAssetBundle = await GetCachedAssetBundle(new System.Uri(url));
-            if (Caching.IsVersionCached(cachedAssetBundle) || (caching && ResourceCache.CheckFreeSpace(await GetSize(url))))
+            CachedAssetBundle assetBundleVersion = await GetAssetBundleVersion(new System.Uri(url));
+            if (Caching.IsVersionCached(assetBundleVersion) || (caching && ResourceCache.CheckFreeSpace(await GetSize(url))))
             {
-                request = UnityWebRequestAssetBundle.GetAssetBundle(url, cachedAssetBundle, 0);
+                request = UnityWebRequestAssetBundle.GetAssetBundle(url, assetBundleVersion, 0);
             }
             else 
             {
                 request = UnityWebRequestAssetBundle.GetAssetBundle(url);
             }
 
-            UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, Caching.IsVersionCached(cachedAssetBundle)? null : progress);
+            UnityWebRequest uwr = await SendWebRequest(request, cancelationToken, Caching.IsVersionCached(assetBundleVersion) ? null : progress);
             if (uwr != null && !uwr.isHttpError && !uwr.isNetworkError)
             {
                 AssetBundle assetBundle = DownloadHandlerAssetBundle.GetContent(uwr);
                 if (caching) 
                 {
                     // Deleting old versions from the cache
-                    Caching.ClearOtherCachedVersions(assetBundle.name, cachedAssetBundle.hash);
+                    Caching.ClearOtherCachedVersions(assetBundle.name, assetBundleVersion.hash);
                 }
                 return assetBundle;
             }
             else
             {
                 throw new Exception("[Netowrk] error: " + uwr.error + " " + uwr.uri);
+            }
+        }
+
+        private static async Task<CachedAssetBundle> GetAssetBundleVersion(System.Uri uri)
+        {
+            Hash128 hash = default;
+            string manifest = await GetText(uri + ".manifest");
+
+            if (!string.IsNullOrEmpty(manifest))
+            {
+                hash = GetHashFromManifest(manifest);
+                return new CachedAssetBundle(uri.LocalPath, hash);
+            }
+            else
+            {
+                DirectoryInfo dir = new DirectoryInfo(uri.ToString().ConvertToLocalPath());
+                if (dir.Exists)
+                {
+                    System.DateTime lastWriteTime = default;
+                    foreach (var item in dir.GetDirectories())
+                    {
+                        if (lastWriteTime < item.LastWriteTime)
+                        {
+                            if (hash.isValid && hash != default) Directory.Delete(Path.Combine(dir.FullName, hash.ToString()), true);
+                            lastWriteTime = item.LastWriteTime;
+                            hash = Hash128.Parse(item.Name);
+                        }
+                        else { Directory.Delete(Path.Combine(dir.FullName, item.Name), true); }
+                    }
+                    return new CachedAssetBundle(uri.LocalPath, hash);
+                }
+                else
+                {
+                    throw new Exception("[Netowrk] error: Nothing was found in the cache for " + uri);
+                }
             }
         }
 
@@ -193,42 +228,6 @@ namespace mofrison.Network
             var hash = Hash128.Parse(hashRow.Split(':')[1].Trim());
             return hash;
         }
-
-        private static async Task<CachedAssetBundle> GetCachedAssetBundle(System.Uri uri)
-        {
-            Hash128 hash = default;
-            string manifest = await GetText(uri + ".manifest");
-
-            if (!string.IsNullOrEmpty(manifest))
-            {
-                hash = GetHashFromManifest(manifest);
-                return new CachedAssetBundle(uri.LocalPath, hash);
-            }
-            else
-            {
-                DirectoryInfo dir = new DirectoryInfo(uri.ToString().ConvertToLocalPath());
-                if (dir.Exists)
-                {
-                    System.DateTime lastWriteTime = default;
-                    foreach (var item in dir.GetDirectories())
-                    {
-                        if (lastWriteTime < item.LastWriteTime)
-                        {
-                            if (hash.isValid && hash != default) Directory.Delete(Path.Combine(dir.FullName, hash.ToString()), true);
-                            lastWriteTime = item.LastWriteTime;
-                            hash = Hash128.Parse(item.Name);
-                        }
-                        else { Directory.Delete(Path.Combine(dir.FullName, item.Name), true); }
-                    }
-                    return new CachedAssetBundle(uri.LocalPath, hash);
-                }
-                else
-                {
-                    throw new Exception("[Netowrk] error: Nothing was found in the cache for " + uri);
-                }
-            }
-        }
-
 
         public static async Task<string> GetCachedPath(this string url)
         {
