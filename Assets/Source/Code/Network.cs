@@ -128,16 +128,16 @@ namespace mofrison.Network
         private static async Task<CachedAssetBundle> GetAssetBundleVersion(string url)
         {
             Hash128 hash = default;
-            string manifest = await GetText(url + ".manifest");
             string localPath = new System.Uri(url).LocalPath;
-
-            if (!string.IsNullOrEmpty(manifest))
+            try
             {
+                string manifest = await GetText(url + ".manifest");
                 hash = GetHashFromManifest(manifest);
                 return new CachedAssetBundle(localPath, hash);
             }
-            else
+            catch (Exception e)
             {
+                Debug.LogWarning("[Netowrk] error: " + e.Message);
                 DirectoryInfo dir = new DirectoryInfo(url.ConvertToCachedPath());
                 if (dir.Exists)
                 {
@@ -146,7 +146,10 @@ namespace mofrison.Network
                     {
                         if (lastWriteTime < item.LastWriteTime)
                         {
-                            if (hash.isValid && hash != default) Directory.Delete(Path.Combine(dir.FullName, hash.ToString()), true);
+                            if (hash.isValid && hash != default) 
+                            { 
+                                Directory.Delete(Path.Combine(dir.FullName, hash.ToString()), true);
+                            }
                             lastWriteTime = item.LastWriteTime;
                             hash = Hash128.Parse(item.Name);
                         }
@@ -218,8 +221,7 @@ namespace mofrison.Network
             }
             else
             {
-                Debug.LogWarning("[Netowrk] error: " + uwr.error + " " + uwr.url);
-                return null;
+                throw new Exception("[Netowrk] error: " + uwr.error + " " + uwr.url);
             }
         }
 
@@ -227,7 +229,8 @@ namespace mofrison.Network
         {
             var hashRow = manifest.Split("\n".ToCharArray())[5];
             var hash = Hash128.Parse(hashRow.Split(':')[1].Trim());
-            return hash;
+            if (hash.isValid && hash != default) { return hash; }
+            else { throw new Exception("[Netowrk] error: couldn't extract hash from manifest."); }
         }
 
         public static async Task<string> GetCachedPath(this string url)
