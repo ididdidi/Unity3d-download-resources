@@ -95,7 +95,14 @@ namespace mofrison.Network
                 texture.name = Path.GetFileName(uwr.url);
                 if (caching && !isCached) 
                 {
-                    ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
+                    try
+                    {
+                        ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning("[Netowrk] error: " + e.Message);
+                    }
                 }
                 return texture;
             }
@@ -118,7 +125,14 @@ namespace mofrison.Network
                 audioClip.name = Path.GetFileName(uwr.url);
                 if (caching && !isCached)
                 {
-                    ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
+                    try
+                    {
+                        ResourceCache.Caching(uwr.url, uwr.downloadHandler.data);
+                    }
+                    catch (System.Exception e)
+                    {
+                        Debug.LogWarning("[Netowrk] error: " + e.Message);
+                    }
                 }
                 return audioClip;
             }
@@ -139,11 +153,11 @@ namespace mofrison.Network
                     try
                     {
                         if (caching && ResourceCache.CheckFreeSpace(await GetSize(url)))
-                        {
+                        {   
                             ResourceCache.Caching(url, await GetData(url, cancelationToken, progress));
                         }
                     }
-                    catch (Exception e)
+                    catch (System.Exception e)
                     {
                         Debug.LogWarning("[Netowrk] error: " + e.Message);
                     }
