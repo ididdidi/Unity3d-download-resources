@@ -5,8 +5,8 @@ namespace mofrison.Network
 {
     public static class ResourceCache
     {
-        public const float MIB = 1048576f;
-        public static string cachingDirectory = "data";
+        private const float MIB = 1048576f;
+        private static string cachingDirectory = "data";
 
         public static void ConfiguringCaching(string directoryName)
         {
@@ -17,6 +17,21 @@ namespace mofrison.Network
                 Directory.CreateDirectory(path);
             }
             UnityEngine.Caching.currentCacheForWriting = UnityEngine.Caching.AddCache(path);
+        }
+
+        public static bool CheckFreeSpace(float sizeInBytes)
+        {
+#if UNITY_EDITOR_WIN
+            var logicalDrive = Path.GetPathRoot(Application.persistentDataPath);
+            var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace(logicalDrive);
+#elif UNITY_EDITOR_OSX
+        var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace();
+#elif UNITY_IOS
+        var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace();
+#elif UNITY_ANDROID
+        var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace(true);
+#endif
+            return availableSpace > sizeInBytes / MIB;
         }
 
         public static void Caching(string url, byte[] data)
@@ -56,21 +71,6 @@ namespace mofrison.Network
             {
                 throw new Exception("[Caching] error: " + url + " " + e.Message);
             }
-        }
-
-        public static bool CheckFreeSpace(float sizeInBytes)
-        {
-#if UNITY_EDITOR_WIN
-            var logicalDrive = Path.GetPathRoot(Application.persistentDataPath);
-            var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace(logicalDrive);
-#elif UNITY_EDITOR_OSX
-        var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace();
-#elif UNITY_IOS
-        var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace();
-#elif UNITY_ANDROID
-        var availableSpace = SimpleDiskUtils.DiskUtils.CheckAvailableSpace(true);
-#endif
-            return availableSpace > sizeInBytes / MIB;
         }
 
         public class Exception : System.Exception
