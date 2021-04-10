@@ -1,0 +1,3 @@
+[submodule "Network"]
+	path = Assets/Source/Code/Network
+	url = https://github.com/mofrison/Unity3d-Network

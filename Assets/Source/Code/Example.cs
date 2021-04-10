@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Video;
 
-namespace mofrison.Network {
+namespace ru.mofrison.Network {
     public class Example : MonoBehaviour
     {
         private string cachingDirectory = "data";
