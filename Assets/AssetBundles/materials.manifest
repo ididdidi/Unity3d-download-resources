@@ -1,0 +1,21 @@
+ManifestFileVersion: 0
+CRC: 823272824
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: f6c63d9eec4fd81353f4eff40d0a0730
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: 22357172b8cea85847937e8f62d0c077
+HashAppended: 0
+ClassTypes:
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/Resources/Materials/VideoMaterial.mat
+Dependencies: []
